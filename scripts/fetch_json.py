@@ -21,7 +21,7 @@ else:
 MINIMAL_TYPST_VERSION = "0.11.0" # Minimal Typst version with JSON docs
 
 DEFAULT_BUILD_DIR = Path("build")
-DEFAULT_OUTPUT_DIR = DEFAULT_BUILD_DIR / "raw-docs"
+DEFAULT_OUTPUT_DIR = DEFAULT_BUILD_DIR / "json"
 DEFAULT_ASSETS_DIR = DEFAULT_BUILD_DIR / "assets"
 
 def get_pinned_rust_version(repo_dir: Path) -> str | None:

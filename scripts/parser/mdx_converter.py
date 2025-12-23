@@ -10,16 +10,16 @@ def js_escape(text: str) -> str:
         return ""
     return text.replace("\\", "\\\\").replace("'", "\\'").replace('\n', ' ')
 
-def render_generic(details: Union[str, list, dict]) -> str:
-    if not details:
+def render_generic(html: Union[str, list, dict]) -> str:
+    if not html:
         return ""
     
-    if isinstance(details, str):
-        return html_to_mdx(details)
+    if isinstance(html, str):
+        return html_to_mdx(html)
     
-    if isinstance(details, list):
+    if isinstance(html, list):
         result = []
-        for item in details:
+        for item in html:
             if isinstance(item, dict):
                 kind = item.get("kind") or "html"
                 content = item.get("content")
@@ -37,7 +37,7 @@ def render_generic(details: Union[str, list, dict]) -> str:
     return ""
 
 def render_type_table(params: list[dict]) -> str:
-    # TODO: Replace with simple headings (or rewrite component to support mdx inside)
+    # TODO: Use with future component distribution (and fix component mdx)
     if not params:
         return ""
     
@@ -71,6 +71,21 @@ def render_type_table(params: list[dict]) -> str:
 />
 """
 
+def render_params_md(params: list[dict]) -> str:
+    if not params:
+        return ""
+
+    params_result = []
+    for param in params:
+        name = param["name"]
+        types = " | ".join(param.get("types", [])) or "any"
+        description = render_generic(param.get("details", "")).strip()
+        default = render_generic(param.get("default") or "")
+        default_str = f"Default: {default}" if default != "" else ""
+        params_result.append(f"### {name} ({types})\n\n{description}\n\n{default_str}")
+
+    return "\n\n".join(params_result) + "\n"
+
 def render_func(func: dict, heading_level: int = 2) -> str:
     head = "#" * heading_level
     name = func['name']
@@ -89,12 +104,13 @@ def render_func(func: dict, heading_level: int = 2) -> str:
         params_sig.append(param)
 
     if func.get("params"):
+        result += f"\n{head} Parameters\n\n"
         signature = f"#{path}(\n{',\n'.join(params_sig)}\n)"
         if 'returns' in func:
             signature += f" -> {' '.join(func['returns'])}"
-        result += f"```typst\n{signature}\n```"
-        result += f"\n{head} Parameters\n"
-        result += render_type_table(func["params"]) + "\n"
+        result += f"```typst\n{signature}\n```\n\n"
+        result += render_params_md(func["params"])
+        # result += render_type_table(func["params"]) + "\n"
 
     if func.get("example"):
         result += "\n**Example:**\n"
@@ -272,11 +288,12 @@ def generate_meta_json(directory_json: dict, folder_path: Path) -> None:
     title = directory_json.get("title")
     description = (directory_json.get("description") or "").replace('\n', ' ')
     pages = [f'"{elem}"' for elem in directory_json.get("children_order") or []]
+    root_string = ',\n  "root": true' if directory_json.get("root") else ""
     children_order = ', '.join(pages)
     meta = f"""{{
   "title": "{title}",
   "description": "{description}",
-  "pages": [{children_order}]
+  "pages": [{children_order}]{root_string}
 }}
 """
     file_path.write_text(meta, encoding='utf-8')
@@ -305,7 +322,7 @@ def process_single_page(page: dict, output_base_path: Path):
     except Exception as e:
         return "ERROR", page.get('title', 'Unknown'), str(e)
 
-def generate_mdx_docs(input_json: Path, output_path: Path) -> None:
+def generate_mdx_docs(input_json: Path, output_path: Path, version: str, is_latest: bool) -> None:
     json_data = json.loads(input_json.read_text(encoding='utf-8'))
 
     full_pages_list = []
@@ -314,11 +331,16 @@ def generate_mdx_docs(input_json: Path, output_path: Path) -> None:
     logger.info(f"Found {len(full_pages_list)} pages")
 
     root_page = next((p for p in full_pages_list if not p["route"]), None)
+
+    title = "latest" if is_latest else f"{version}"
+    description = f"Typst Docs for version: {version}"
+
     if root_page:
         root_data = {
-            "title": json_data[0]["title"],
-            "description": json_data[0]["description"],
-            "children_order": [elem.get("route").split("/")[-2] for elem in json_data[1:]] # Упрощенная логика
+            "title": title,
+            "description": description,
+            "children_order": [elem.get("route").split("/")[-2] for elem in json_data[1:]],
+            "root": "true",
         }
         generate_meta_json(root_data, output_path)
         

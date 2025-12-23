@@ -1,3 +1,4 @@
+from typing import cast
 import textwrap
 
 from bs4 import BeautifulSoup, Tag, NavigableString
@@ -84,7 +85,7 @@ def process_table(element: Tag) -> str:
     headers = []
     
     if thead:
-        header_row = thead.find("tr")
+        header_row = cast(Tag | None, thead.find("tr"))
         if header_row:
             for th in header_row.find_all(["th", "td"]):
                 content = "".join([process_inline(child) for child in th.children]).strip().replace("\n", " ")
@@ -95,8 +96,11 @@ def process_table(element: Tag) -> str:
         rows_md.append("| " + " | ".join(["---"] * len(headers)) + " |")
 
     tbody = element.find("tbody")
-    tr_source = tbody if tbody else element
-    tr_list = tr_source.find_all("tr", recursive=False)
+    tr_source = cast(Tag | None, tbody) if tbody else element
+    tr_list = []
+    if tr_source:
+        tr_list = cast(list[Tag], tr_source.find_all("tr", recursive=False))
+        tr_list = tr_source.find_all("tr", recursive=False)
 
     for tr in tr_list:
         if tr.parent.name == "thead":
@@ -190,7 +194,7 @@ def process_element(element):
             if classes:
                 attrs += f' className="{" ".join(classes)}"'
             
-            style = element.get("style")
+            style = cast(str | None, element.get("style"))
             if style:
                 jsx_style = parse_style_to_jsx(style)
                 attrs += f' style={jsx_style}'
@@ -201,8 +205,7 @@ def process_element(element):
             href = element.get("href", "")
             if isinstance(href, list):
                 href = "".join([process_inline(child) for child in href])
-            if href.startswith("/"):
-                href = "/docs" + href
+            href = href.lstrip("/")
             text = "".join([process_inline(child) for child in element.children]).strip()
             return f"[{text}]({href})"
 
@@ -212,7 +215,7 @@ def process_element(element):
         if element.name in ["h2", "h3", "h4", "h5", "h6"]:
             return process_heading(element)
         
-        if element.name == "code" and element.parent.name != "pre":
+        if element.name == "code" and element.parent and element.parent.name != "pre":
             language = "typst"
             text = element.get_text().rstrip()
             return f'`{text}{{:{language}}}`'
@@ -224,7 +227,7 @@ def process_element(element):
             return process_table(element)
         
         if element.name == "span":
-            return str(element)
+            return process_inline(element)
 
         if element.name == "details":
             return str(element)
@@ -244,7 +247,7 @@ def process_inline(element):
         if element.name == "img":
             src = element.get("src", "")
             alt = element.get("alt", "")
-            style = element.get("style")
+            style = cast(str | None, element.get("style"))
             
             attrs = f'src="{src}" alt="{alt}"'
             
@@ -264,8 +267,7 @@ def process_inline(element):
             href = element.get("href", "")
             if isinstance(href, list):
                 href = "".join([process_inline(child) for child in href])
-            if href.startswith("/"):
-                href = "/docs" + href
+            href = href.lstrip("/")
             text = "".join([process_inline(child) for child in element.children]).strip()
             return f"[{text}]({href})"
             
