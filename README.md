@@ -60,24 +60,24 @@ This allows the model to act as a **smart editor**, applying changes only where 
 
 2.  **Build documentation JSON files (Fetcher):**
     ```
-    python fetcher.py --all-versions
+    python scripts/fetch_json.py
     ```
 
-3.  **Run Translation:**
+3. **Convert to MDX (Parser):**
     ```
-    python translator.py --target-lang ru
+    python scripts/parse_docs.py
     ```
 
-### Integration (via tiged)
+### Integration (via tiged) - WIP
 
 If you want to use the generated documentation in your website:
 
-```
+```md
 # 1. Download content (JSON/MDX)
 npx tiged typst-g7-32/typst-mdx#main src/content/docs
 
 # 2. Download assets (Images)
-npx tiged typst-g7-32/typst-mdx#assets public/docs-assets
+npx tiged typst-g7-32/typst-mdx#raw/assets public/docs-assets
 
 # 3. Download UI components (Optional)
 npx tiged typst-g7-32/typst-mdx#ui src/components/typst
